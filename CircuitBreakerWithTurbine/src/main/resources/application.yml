@@ -1,0 +1,6 @@
+turbine:
+  cluster-name-expression: new String("default")
+  app-config: SBICONSUMER, SBICONSUMER2
+  combine-host-port: true
+  
+  
