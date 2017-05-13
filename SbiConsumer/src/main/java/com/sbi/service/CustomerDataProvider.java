@@ -11,10 +11,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+import com.sbi.domain.Customer;
+import com.sbi.domain.ViewMessage;
 
 /**
  * 
@@ -27,7 +29,7 @@ public class CustomerDataProvider {
 	private DiscoveryClient discoveryClient;
 
 	@HystrixCommand(fallbackMethod = "defaultGreeting")
-	public String getAllCustomers() {
+	public ViewMessage<Customer[]> getAllCustomers() {
 
 		List<ServiceInstance> instances=discoveryClient.getInstances("SBIProducer");
 				
@@ -38,16 +40,21 @@ public class CustomerDataProvider {
 		baseUrl=baseUrl+"/customers";
 
 		RestTemplate restTemplate = new RestTemplate();
-		ResponseEntity<String> response=null;
+		ResponseEntity<Customer[]> response=null;
 		try{
-			response=restTemplate.exchange(baseUrl,
-					HttpMethod.GET, getHeaders(),String.class);
+			response = restTemplate.exchange(baseUrl, HttpMethod.GET, getHeaders(), Customer[].class);
 		}catch (Exception ex)
 		{
 			System.out.println(ex);
 		}
 
-		return response.getBody();
+		ViewMessage<Customer[]> msg = new ViewMessage<>();
+		ObjectMapper mapper = new ObjectMapper();
+		Customer[] clist = mapper.convertValue(response.getBody(), Customer[].class);   
+		msg.setContainsError(false);
+		msg.setData(clist);
+		
+		return msg;
 	}
 
 	/*
@@ -75,7 +82,13 @@ public class CustomerDataProvider {
 	}
 	
 
-    private String defaultGreeting() {
-        return "Service is down";
-    }
+    @SuppressWarnings("unused")
+	private ViewMessage<Customer[]> defaultGreeting() {
+		
+		ViewMessage<Customer[]> msg = new ViewMessage<>();
+		msg.setContainsError(true);
+		msg.setMessage("Producer Server is down");
+	
+		return msg;
+	}
 }

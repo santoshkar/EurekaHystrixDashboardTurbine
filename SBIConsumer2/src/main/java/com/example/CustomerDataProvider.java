@@ -13,7 +13,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+import com.sbi.domain.Customer;
+import com.sbi.domain.ViewMessage;
 
 /**
  * 
@@ -25,8 +28,8 @@ public class CustomerDataProvider {
 	@Autowired
 	private DiscoveryClient discoveryClient;
 
-	@HystrixCommand(fallbackMethod = "failoverMessage")
-	public String getCustomer(Long id) {
+	@HystrixCommand(fallbackMethod = "failoverMessageForId")
+	public ViewMessage<Customer[]> getCustomerById(Long id) {
 
 		List<ServiceInstance> instances = discoveryClient.getInstances("SBIProducer");
 
@@ -37,19 +40,27 @@ public class CustomerDataProvider {
 		baseUrl = baseUrl + "/customer/{id}";
 
 		RestTemplate restTemplate = new RestTemplate();
-		ResponseEntity<String> response = null;
+		ResponseEntity<Customer> response = null;
 		try {
-			response = restTemplate.exchange(baseUrl, HttpMethod.GET, getHeaders(), String.class, id);
+			response = restTemplate.exchange(baseUrl, HttpMethod.GET, getHeaders(), Customer.class, id);
 		} catch (Exception ex) {
 			ex.printStackTrace();
 			System.out.println(ex);
 		}
 
-		return response.getBody();
+		ViewMessage<Customer[]> msg = new ViewMessage<>();
+		ObjectMapper mapper = new ObjectMapper();
+		Customer c = mapper.convertValue(response.getBody(), Customer.class); 
+		Customer list[] = new Customer[1];
+		list[0] = c;
+		msg.setContainsError(false);
+		msg.setData(list);
+		
+		return msg;
 	}
 
-	@HystrixCommand(fallbackMethod = "failoverMessage")
-	public String getCustomerByFirstName(String name) {
+	@HystrixCommand(fallbackMethod = "failoverMessageForName")
+	public ViewMessage<Customer[]> getCustomerByFirstName(String name) {
 
 		List<ServiceInstance> instances = discoveryClient.getInstances("SBIProducer");
 
@@ -60,20 +71,26 @@ public class CustomerDataProvider {
 		baseUrl = baseUrl + "/customerByFirstName/{firstName}";
 
 		RestTemplate restTemplate = new RestTemplate();
-		ResponseEntity<String> response = null;
+		ResponseEntity<Customer[]> response = null;
 		try {
-			response = restTemplate.exchange(baseUrl, HttpMethod.GET, getHeaders(), String.class, name);
+			response = restTemplate.exchange(baseUrl, HttpMethod.GET, getHeaders(), Customer[].class, name);
 		} catch (Exception ex) {
 			ex.printStackTrace();
 			System.out.println(ex);
 		}
 
-		return response.getBody();
+		ViewMessage<Customer[]> msg = new ViewMessage<>();
+		ObjectMapper mapper = new ObjectMapper();
+		Customer[] clist = mapper.convertValue(response.getBody(), Customer[].class); 
+		msg.setContainsError(false);
+		msg.setData(clist);
+		
+		return msg;
 	}
 	
 	
-	@HystrixCommand(fallbackMethod = "failoverMessage")
-	public String getCustomerByLastName(String name) {
+	@HystrixCommand(fallbackMethod = "failoverMessageForName")
+	public ViewMessage<Customer[]> getCustomerByLastName(String name) {
 
 		List<ServiceInstance> instances = discoveryClient.getInstances("SBIProducer");
 
@@ -84,15 +101,21 @@ public class CustomerDataProvider {
 		baseUrl = baseUrl + "/customerByLastName/{lastName}";
 
 		RestTemplate restTemplate = new RestTemplate();
-		ResponseEntity<String> response = null;
+		ResponseEntity<Customer[]> response = null;
 		try {
-			response = restTemplate.exchange(baseUrl, HttpMethod.GET, getHeaders(), String.class, name);
+			response = restTemplate.exchange(baseUrl, HttpMethod.GET, getHeaders(), Customer[].class, name);
 		} catch (Exception ex) {
 			ex.printStackTrace();
 			System.out.println(ex);
 		}
 
-		return response.getBody();
+		ViewMessage<Customer[]> msg = new ViewMessage<>();
+		ObjectMapper mapper = new ObjectMapper();
+		Customer[] clist = mapper.convertValue(response.getBody(), Customer[].class); 
+		msg.setContainsError(false);
+		msg.setData(clist);
+		
+		return msg;
 	}
 
 	private static HttpEntity<?> getHeaders() throws IOException {
@@ -102,12 +125,22 @@ public class CustomerDataProvider {
 	}
 
 	@SuppressWarnings("unused")
-	private String failoverMessage(Long id) {
-		return "Service is down";
+	private ViewMessage<Customer[]> failoverMessageForId(Long id) {
+		
+		ViewMessage<Customer[]> msg = new ViewMessage<>();
+		msg.setContainsError(true);
+		msg.setMessage("Producer Server is down");
+	
+		return msg;
 	}
 	
 	@SuppressWarnings("unused")
-	private String failoverMessage(String name) {
-		return "Service is down";
+	private ViewMessage<Customer[]> failoverMessageForName(String name) {
+		
+		ViewMessage<Customer[]> msg = new ViewMessage<>();
+		msg.setContainsError(true);
+		msg.setMessage("Producer Server is down");
+	
+		return msg;
 	}
 }
